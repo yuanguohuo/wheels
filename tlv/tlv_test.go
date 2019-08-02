@@ -2,7 +2,6 @@ package tlv
 
 import (
 	"bytes"
-	"encoding/binary"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -51,8 +50,8 @@ func Test_Build_1(t *testing.T) {
 
 	tagbinary := make([]byte, 4)
 	lenbinary := make([]byte, 4)
-	binary.LittleEndian.PutUint32(tagbinary, uint32(tag))
-	binary.LittleEndian.PutUint32(lenbinary, 0)
+	encoder.PutUint32(tagbinary, uint32(tag))
+	encoder.PutUint32(lenbinary, 0)
 	assert.True(t, bytes.Equal(buf[0:4], tagbinary))
 	assert.True(t, bytes.Equal(buf[4:8], lenbinary))
 
@@ -65,8 +64,8 @@ func Test_Build_1(t *testing.T) {
 
 	tagbinary = make([]byte, 4)
 	lenbinary = make([]byte, 4)
-	binary.LittleEndian.PutUint32(tagbinary, uint32(tag))
-	binary.LittleEndian.PutUint32(lenbinary, 0)
+	encoder.PutUint32(tagbinary, uint32(tag))
+	encoder.PutUint32(lenbinary, 0)
 	assert.True(t, bytes.Equal(buf[0:4], tagbinary))
 	assert.True(t, bytes.Equal(buf[4:8], lenbinary))
 }
@@ -89,8 +88,8 @@ func Test_Build_2(t *testing.T) {
 	assertClosed(t, tlv, tag, 13, []byte("AABBCCDDEEFFG"))
 
 	bin := make([]byte, 21)
-	binary.LittleEndian.PutUint32(bin[0:4], uint32(tag))
-	binary.LittleEndian.PutUint32(bin[4:8], 13)
+	encoder.PutUint32(bin[0:4], uint32(tag))
+	encoder.PutUint32(bin[4:8], 13)
 	copy(bin[8:], []byte("AABBCCDDEEFFG"))
 	assert.True(t, bytes.Equal(buf, bin))
 }
@@ -119,8 +118,8 @@ func Test_Allocate_1(t *testing.T) {
 
 	tagbinary := make([]byte, 4)
 	lenbinary := make([]byte, 4)
-	binary.LittleEndian.PutUint32(tagbinary, uint32(tag))
-	binary.LittleEndian.PutUint32(lenbinary, 0)
+	encoder.PutUint32(tagbinary, uint32(tag))
+	encoder.PutUint32(lenbinary, 0)
 	assert.True(t, bytes.Equal(buf[0:4], tagbinary))
 	assert.True(t, bytes.Equal(buf[4:8], lenbinary))
 }
@@ -214,8 +213,8 @@ func Test_Allocate_2(t *testing.T) {
 
 	tagbinary := make([]byte, 4)
 	lenbinary := make([]byte, 4)
-	binary.LittleEndian.PutUint32(tagbinary, uint32(tag))
-	binary.LittleEndian.PutUint32(lenbinary, 16)
+	encoder.PutUint32(tagbinary, uint32(tag))
+	encoder.PutUint32(lenbinary, 16)
 	assert.True(t, bytes.Equal(buf[0:4], tagbinary))
 	assert.True(t, bytes.Equal(buf[4:8], lenbinary))
 	assert.True(t, bytes.Equal(buf[8:24], []byte("AAABBBBBBBBBCCCC")))
@@ -406,30 +405,30 @@ func Test_NestedTLV_1(t *testing.T) {
 
 	son3ValBin := make([]byte, 40)
 	var i int = 0
-	binary.LittleEndian.PutUint32(son3ValBin[i:], uint32(son31Tag))
+	encoder.PutUint32(son3ValBin[i:], uint32(son31Tag))
 	i += 4
-	binary.LittleEndian.PutUint32(son3ValBin[i:], 1)
+	encoder.PutUint32(son3ValBin[i:], 1)
 	i += 4
 	copy(son3ValBin[i:], []byte("A"))
 	i += 1
 
-	binary.LittleEndian.PutUint32(son3ValBin[i:], uint32(son32Tag))
+	encoder.PutUint32(son3ValBin[i:], uint32(son32Tag))
 	i += 4
-	binary.LittleEndian.PutUint32(son3ValBin[i:], 6)
+	encoder.PutUint32(son3ValBin[i:], 6)
 	i += 4
 	copy(son3ValBin[i:], []byte("CCCCDD"))
 	i += 6
 
-	binary.LittleEndian.PutUint32(son3ValBin[i:], uint32(son33Tag))
+	encoder.PutUint32(son3ValBin[i:], uint32(son33Tag))
 	i += 4
-	binary.LittleEndian.PutUint32(son3ValBin[i:], 1)
+	encoder.PutUint32(son3ValBin[i:], 1)
 	i += 4
 	copy(son3ValBin[i:], []byte("X"))
 	i += 1
 
-	binary.LittleEndian.PutUint32(son3ValBin[i:], uint32(son34Tag))
+	encoder.PutUint32(son3ValBin[i:], uint32(son34Tag))
 	i += 4
-	binary.LittleEndian.PutUint32(son3ValBin[i:], 0)
+	encoder.PutUint32(son3ValBin[i:], 0)
 	i += 4
 
 	assertClosed(t, son3, son3Tag, 40, son3ValBin)
@@ -530,58 +529,58 @@ func Test_NestedTLV_1(t *testing.T) {
 
 	bin := make([]byte, TOTAL)
 	i = 0
-	binary.LittleEndian.PutUint32(bin[i:], uint32(rootTag))
+	encoder.PutUint32(bin[i:], uint32(rootTag))
 	i += 4
-	binary.LittleEndian.PutUint32(bin[i:], uint32(TOTAL-8)) //VAL of root is TOTAL-8 bytes
+	encoder.PutUint32(bin[i:], uint32(TOTAL-8)) //VAL of root is TOTAL-8 bytes
 	i += 4
-	binary.LittleEndian.PutUint32(bin[i:], uint32(son1Tag))
+	encoder.PutUint32(bin[i:], uint32(son1Tag))
 	i += 4
-	binary.LittleEndian.PutUint32(bin[i:], 7) //VAL os son1 is 7 bytes
+	encoder.PutUint32(bin[i:], 7) //VAL os son1 is 7 bytes
 	i += 4
 	copy(bin[i:], []byte("HHHHHHH"))
 	i += 7
 
-	binary.LittleEndian.PutUint32(bin[i:], uint32(son2Tag))
+	encoder.PutUint32(bin[i:], uint32(son2Tag))
 	i += 4
-	binary.LittleEndian.PutUint32(bin[i:], 8) //VAL of son2 is 8 bytes;
+	encoder.PutUint32(bin[i:], 8) //VAL of son2 is 8 bytes;
 	i += 4
 	copy(bin[i:], []byte("AAAABBBB"))
 	i += 8
 
-	binary.LittleEndian.PutUint32(bin[i:], uint32(son3Tag))
+	encoder.PutUint32(bin[i:], uint32(son3Tag))
 	i += 4
-	binary.LittleEndian.PutUint32(bin[i:], 40) //VAL of son3 is 40 bytes;
+	encoder.PutUint32(bin[i:], 40) //VAL of son3 is 40 bytes;
 	i += 4
 
-	binary.LittleEndian.PutUint32(bin[i:], uint32(son31Tag))
+	encoder.PutUint32(bin[i:], uint32(son31Tag))
 	i += 4
-	binary.LittleEndian.PutUint32(bin[i:], 1) //VAL of son31 is 1 byte;
+	encoder.PutUint32(bin[i:], 1) //VAL of son31 is 1 byte;
 	i += 4
 	copy(bin[i:], []byte("A"))
 	i += 1
 
-	binary.LittleEndian.PutUint32(bin[i:], uint32(son32Tag))
+	encoder.PutUint32(bin[i:], uint32(son32Tag))
 	i += 4
-	binary.LittleEndian.PutUint32(bin[i:], 6) //VAL of son32 is 6 bytes;
+	encoder.PutUint32(bin[i:], 6) //VAL of son32 is 6 bytes;
 	i += 4
 	copy(bin[i:], []byte("CCCCDD"))
 	i += 6
 
-	binary.LittleEndian.PutUint32(bin[i:], uint32(son33Tag))
+	encoder.PutUint32(bin[i:], uint32(son33Tag))
 	i += 4
-	binary.LittleEndian.PutUint32(bin[i:], 1) //VAL of son33 is 1 byte;
+	encoder.PutUint32(bin[i:], 1) //VAL of son33 is 1 byte;
 	i += 4
 	copy(bin[i:], []byte("X"))
 	i += 1
 
-	binary.LittleEndian.PutUint32(bin[i:], uint32(son34Tag))
+	encoder.PutUint32(bin[i:], uint32(son34Tag))
 	i += 4
-	binary.LittleEndian.PutUint32(bin[i:], 0) //VAL of son34 is 0 byte;
+	encoder.PutUint32(bin[i:], 0) //VAL of son34 is 0 byte;
 	i += 4
 
-	binary.LittleEndian.PutUint32(bin[i:], uint32(son4Tag))
+	encoder.PutUint32(bin[i:], uint32(son4Tag))
 	i += 4
-	binary.LittleEndian.PutUint32(bin[i:], 5) //VAL of son34 is 5 bytes;
+	encoder.PutUint32(bin[i:], 5) //VAL of son34 is 5 bytes;
 	i += 4
 	copy(bin[i:], []byte("ABCDE"))
 	i += 5

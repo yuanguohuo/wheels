@@ -6,6 +6,9 @@ import (
 	"errors"
 )
 
+//var encoder = binary.BigEndian
+var encoder = binary.LittleEndian
+
 var (
 	Err_WouldOverflow   error = errors.New("buffer would overflow")
 	Err_Corrupted       error = errors.New("tlv is corrupted")
@@ -127,13 +130,13 @@ func (tlv *TLV) FillRaw(v []byte) error {
 
 func (tlv *TLV) FillRawInt32(v int32) error {
 	b := make([]byte, 4)
-	binary.LittleEndian.PutUint32(b, uint32(v))
+	encoder.PutUint32(b, uint32(v))
 	return tlv.FillRaw(b)
 }
 
 func (tlv *TLV) FillRawInt64(v int64) error {
 	b := make([]byte, 8)
-	binary.LittleEndian.PutUint64(b, uint64(v))
+	encoder.PutUint64(b, uint64(v))
 	return tlv.FillRaw(b)
 }
 
@@ -197,16 +200,16 @@ func (tlv *TLV) BuildChild(t TLVTag, v []byte) (*TLV, error) {
 
 func (tlv *TLV) BuildChildInt32(t TLVTag, v int32) (*TLV, error) {
 	b := make([]byte, 4)
-	binary.LittleEndian.PutUint32(b, uint32(v))
+	encoder.PutUint32(b, uint32(v))
 	return tlv.BuildChild(t, b)
 }
 
 func (tlv *TLV) Tag() TLVTag {
-	return TLVTag(binary.LittleEndian.Uint32(tlv.body[TAG_OFFSET:]))
+	return TLVTag(encoder.Uint32(tlv.body[TAG_OFFSET:]))
 }
 
 func (tlv *TLV) Len() int {
-	return int(binary.LittleEndian.Uint32(tlv.body[LEN_OFFSET:]))
+	return int(encoder.Uint32(tlv.body[LEN_OFFSET:]))
 }
 
 func (tlv *TLV) Val() []byte {
@@ -214,11 +217,11 @@ func (tlv *TLV) Val() []byte {
 }
 
 func (tlv *TLV) ValAsInt32() int32 {
-	return int32(binary.LittleEndian.Uint32(tlv.body[VAL_OFFSET:]))
+	return int32(encoder.Uint32(tlv.body[VAL_OFFSET:]))
 }
 
 func (tlv *TLV) ValAsInt64() int64 {
-	return int64(binary.LittleEndian.Uint64(tlv.body[VAL_OFFSET:]))
+	return int64(encoder.Uint64(tlv.body[VAL_OFFSET:]))
 }
 
 func (tlv *TLV) Equal(other *TLV) bool {
@@ -251,8 +254,8 @@ func Unmarshal(bin []byte, p *TLV) (map[TLVTag][]*TLV, error) {
 		if len(bin) < TAG_SIZE+LEN_SIZE {
 			return nil, Err_Corrupted
 		}
-		t := TLVTag(binary.LittleEndian.Uint32(bin[TAG_OFFSET:]))
-		l := int(binary.LittleEndian.Uint32(bin[LEN_OFFSET:]))
+		t := TLVTag(encoder.Uint32(bin[TAG_OFFSET:]))
+		l := int(encoder.Uint32(bin[LEN_OFFSET:]))
 
 		if len(bin) < VAL_OFFSET+l {
 			return nil, Err_Corrupted
@@ -324,14 +327,14 @@ func (tlv *TLV) mustSetTag(t TLVTag) {
 	if len(tlv.body[TAG_OFFSET:]) < TAG_SIZE {
 		panic("buffer overflow")
 	}
-	binary.LittleEndian.PutUint32(tlv.body[TAG_OFFSET:], uint32(t))
+	encoder.PutUint32(tlv.body[TAG_OFFSET:], uint32(t))
 }
 
 func (tlv *TLV) mustSetLen(l int) {
 	if len(tlv.body[LEN_OFFSET:]) < LEN_SIZE {
 		panic("buffer overflow")
 	}
-	binary.LittleEndian.PutUint32(tlv.body[LEN_OFFSET:], uint32(l))
+	encoder.PutUint32(tlv.body[LEN_OFFSET:], uint32(l))
 }
 
 func (tlv *TLV) mustFillRaw(v []byte) {
