@@ -91,6 +91,9 @@ func Build(buf []byte, p *TLV, t TLVTag, v []byte) (*TLV, error) {
 }
 
 func (tlv *TLV) Close() error {
+	if tlv.hasOpenChild {
+		return Err_HasOpenChild
+	}
 	valLen := tlv.curr - VAL_OFFSET
 	if tlv.state == TLVState_Open {
 		if err := tlv.allocate(valLen); err != nil {
@@ -120,6 +123,18 @@ func (tlv *TLV) FillRaw(v []byte) error {
 	}
 	tlv.mustFillRaw(v)
 	return nil
+}
+
+func (tlv *TLV) FillRawInt32(v int32) error {
+	b := make([]byte, 4)
+	binary.LittleEndian.PutUint32(b, uint32(v))
+	return tlv.FillRaw(b)
+}
+
+func (tlv *TLV) FillRawInt64(v int64) error {
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b, uint64(v))
+	return tlv.FillRaw(b)
 }
 
 //open a nested TLV (child) as VALUE of 'this';
@@ -180,6 +195,12 @@ func (tlv *TLV) BuildChild(t TLVTag, v []byte) (*TLV, error) {
 	return child, nil
 }
 
+func (tlv *TLV) BuildChildInt32(t TLVTag, v int32) (*TLV, error) {
+	b := make([]byte, 4)
+	binary.LittleEndian.PutUint32(b, uint32(v))
+	return tlv.BuildChild(t, b)
+}
+
 func (tlv *TLV) Tag() TLVTag {
 	return TLVTag(binary.LittleEndian.Uint32(tlv.body[TAG_OFFSET:]))
 }
@@ -192,8 +213,28 @@ func (tlv *TLV) Val() []byte {
 	return tlv.body[VAL_OFFSET:]
 }
 
+func (tlv *TLV) ValAsInt32() int32 {
+	return int32(binary.LittleEndian.Uint32(tlv.body[VAL_OFFSET:]))
+}
+
+func (tlv *TLV) ValAsInt64() int64 {
+	return int64(binary.LittleEndian.Uint64(tlv.body[VAL_OFFSET:]))
+}
+
 func (tlv *TLV) Equal(other *TLV) bool {
 	return bytes.Equal(tlv.body, other.body)
+}
+
+func (tlv *TLV) ChildWithTag(t TLVTag) *TLV {
+	c := tlv.children[t]
+	if len(c) == 0 {
+		return nil
+	}
+	return c[0]
+}
+
+func (tlv *TLV) ChildrenWithTag(t TLVTag) []*TLV {
+	return tlv.children[t]
 }
 
 func Marshal(tlv *TLV) ([]byte, error) {
