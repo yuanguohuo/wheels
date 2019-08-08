@@ -97,6 +97,7 @@ func (tlv *TLV) Close() error {
 	if tlv.hasOpenChild {
 		return Err_HasOpenChild
 	}
+
 	valLen := tlv.curr - VAL_OFFSET
 	if tlv.state == TLVState_Open {
 		if err := tlv.allocate(valLen); err != nil {
@@ -204,6 +205,12 @@ func (tlv *TLV) BuildChildInt32(t TLVTag, v int32) (*TLV, error) {
 	return tlv.BuildChild(t, b)
 }
 
+func (tlv *TLV) BuildChildInt64(t TLVTag, v int64) (*TLV, error) {
+	b := make([]byte, 8)
+	encoder.PutUint64(b, uint64(v))
+	return tlv.BuildChild(t, b)
+}
+
 func (tlv *TLV) Tag() TLVTag {
 	return TLVTag(encoder.Uint32(tlv.body[TAG_OFFSET:]))
 }
@@ -288,6 +295,9 @@ func Unmarshal(bin []byte, p *TLV) (map[TLVTag][]*TLV, error) {
 }
 
 func (tlv *TLV) allocate(valLen int) error {
+	if tlv.state == TLVState_Allocated {
+		return nil
+	}
 	if tlv.state != TLVState_Open {
 		return Err_UnexpectedState
 	}
@@ -304,6 +314,9 @@ func (tlv *TLV) allocate(valLen int) error {
 }
 
 func (tlv *TLV) close(valLen int) error {
+	if tlv.state == TLVState_Closed {
+		return nil
+	}
 	if tlv.state != TLVState_Allocated {
 		return Err_UnexpectedState
 	}
