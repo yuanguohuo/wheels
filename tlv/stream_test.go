@@ -8,26 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type simpleHandler struct {
-	root *TLV
-}
-
-func (h *simpleHandler) OnFailure(err error) {
-	log.Panicf("OnFailure. error:%s", err)
-}
-func (h *simpleHandler) OnSuccess() {
-	log.Printf("OnSuccess")
-}
-func (h *simpleHandler) OnBegin(tlv *TLV) {
-	log.Printf("OnBegin")
-	if h.root == nil {
-		h.root = tlv
-	}
-}
-func (h *simpleHandler) OnEnd(tlv *TLV) {
-	log.Printf("OnBegin")
-}
-
 func Test_ParseStream(t *testing.T) {
 	buf := make([]byte, 1024)
 	var err error
@@ -255,9 +235,24 @@ func Test_ParseStream(t *testing.T) {
 	//////////////////////////
 	newBuf := make([]byte, 1024)
 	reader := bytes.NewReader(handBuilt)
-	cb := new(simpleHandler)
+
+	var parsed *TLV
+
+	cb := StreamHandler{}
+	cb.OnFailure = func(err error) { log.Panicf("OnFailure. error:%s", err) }
+	cb.OnSuccess = func() { log.Printf("OnSuccess") }
+	cb.OnBegin = func(tlvBegin *TLV) error {
+		log.Printf("OnBegin. Tag:%d", tlvBegin.Tag())
+		if parsed == nil {
+			parsed = tlvBegin
+		}
+		return nil
+	}
+	cb.OnEnd = func(tlvEnd *TLV) error {
+		log.Printf("OnEnd. Tag:%d", tlvEnd.Tag())
+		return nil
+	}
 
 	assert.Nil(t, ParseStream(newBuf, reader, cb))
-	parsed := cb.root
 	assert.True(t, bytes.Equal(parsed.body, root.body))
 }

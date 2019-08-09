@@ -2,12 +2,16 @@ package tlv
 
 import "io"
 
-type StreamHandler interface {
-	OnFailure(err error)
-	OnSuccess()
+type OnFailureFunc func(error)
+type OnSuccessFunc func()
+type OnBeginFunc func(t *TLV) error
+type OnEndFunc func(t *TLV) error
 
-	OnBegin(tlv *TLV)
-	OnEnd(tlv *TLV)
+type StreamHandler struct {
+	OnFailure OnFailureFunc
+	OnSuccess OnSuccessFunc
+	OnBegin   OnBeginFunc
+	OnEnd     OnEndFunc
 }
 
 func Stream(tlv *TLV, writer io.Writer) error {
@@ -58,8 +62,12 @@ func ParseStream(buffer []byte, reader io.Reader, cb StreamHandler) error {
 
 			raw := takeOverRaw(buffer[0:VAL_OFFSET+l], nearestParent)
 			buffer = buffer[VAL_OFFSET+l:]
-			cb.OnBegin(raw)
-			cb.OnEnd(raw)
+			if err = cb.OnBegin(raw); err != nil {
+				return err
+			}
+			if err = cb.OnEnd(raw); err != nil {
+				return err
+			}
 
 			c := raw
 			for {
@@ -72,7 +80,9 @@ func ParseStream(buffer []byte, reader io.Reader, cb StreamHandler) error {
 				}
 				if nearestParent.curr == len(nearestParent.body) { //nearest parent is full
 					nearestParent.state = TLVState_Closed
-					cb.OnEnd(nearestParent)
+					if err = cb.OnEnd(nearestParent); err != nil {
+						return err
+					}
 					c = nearestParent
 					nearestParent = c.parent
 					continue
@@ -86,7 +96,9 @@ func ParseStream(buffer []byte, reader io.Reader, cb StreamHandler) error {
 			nesting := takeOverNesting(buffer[0:VAL_OFFSET+l], nearestParent)
 			nearestParent = nesting
 			buffer = buffer[TAG_SIZE+LEN_SIZE:]
-			cb.OnBegin(nesting)
+			if err = cb.OnBegin(nesting); err != nil {
+				return err
+			}
 
 		default:
 			cb.OnFailure(Err_UnexpectedTag)
