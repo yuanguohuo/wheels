@@ -1,0 +1,52 @@
+#!/bin/bash
+
+source /usr/bin/ceph_common
+
+if [ -z "$MON_ID" ] ; then
+    echo "ERROR: MON_ID must be specified"
+    exit 1
+fi
+
+if [ ! -f $MONMAP ] ; then
+    echo "ERROR: $MONMAP not exist"
+    exit 1
+fi 
+
+if [ ! -f $CLUSTER_KEYRING ] ; then
+    echo "ERROR: $CLUSTER_KEYRING not exist"
+    exit 1
+fi 
+
+if [ ! -f $CCONF ] ; then
+    echo "ERROR: $CCONF not exist"
+    exit 1
+fi 
+
+#step1: cluster mon data dir
+mon_data_dir=$(ceph-conf --name mon.${MON_ID} -c $CCONF 'mon data')
+[ -z "$mon_data_dir" ] && mon_data_dir=${DIR_VAR_LIB_CEPH}/mon/${CLUSTER_NAME}-${MON_ID}
+mkdir -p $mon_data_dir || exit 1
+
+ensure_owner || exit 1
+
+#step3: init mon filesystem
+# ceph-mon will find out the $CCONF based on $CLUSTER_NAME, parse it and get $mon_data_dir, and init mon filesystem in
+# dir $mon_data_dir
+/usr/bin/ceph-mon                \
+    --setuser ceph               \
+    --setgroup ceph              \
+    --cluster "${CLUSTER_NAME}"  \
+    --mkfs                       \
+    -i "${MON_ID}"               \
+    --inject-monmap "$MONMAP"    \
+    --keyring "$CLUSTER_KEYRING" \
+    --mon-data "$mon_data_dir"
+
+#step4: rm the monmap
+#rm -f $MONMAP
+
+#step5: create a done file
+touch $mon_data/done
+
+#step6: start mon deamon
+/usr/bin/ceph-mon -f --cluster ${CLUSTER_NAME} --id ${MON_ID} --setuser ceph --setgroup ceph

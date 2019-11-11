@@ -1,0 +1,71 @@
+[global]
+    cluster = ${clustername }
+    fsid    = ${cluster_fsid}
+
+    public network  = 172.21.0.0/16
+    cluster network = 172.22.0.0/16
+
+    auth cluster required = cephx
+    auth service required = cephx
+    auth client required  = cephx
+
+    osd pool default size     = 3
+    osd pool default min size = 2
+
+    osd pool default pg num     = 32
+    osd pool default pgp num    = 32
+
+    osd pool default crush rule = 0
+    osd crush chooseleaf type   = 1
+
+    admin socket                = /var/run/ceph/$cluster-$name.asock
+    pid file                    = /var/run/ceph/$cluster-$name.pid
+    log file                    = /var/log/ceph/$cluster-$name.log
+    log to syslog               = false
+
+    max open files              = 131072
+    ms bind ipv6                = false
+
+[mon]
+    mon initial members = node10,node11,node12
+    mon host = 172.21.0.10:6789,172.21.0.11:6789,172.21.0.12:6789
+
+    mon data                     = /var/lib/ceph/mon/$cluster-$id
+    mon clock drift allowed      = 10
+    mon clock drift warn backoff = 30
+
+    mon osd full ratio           = .95
+    mon osd nearfull ratio       = .85
+
+    mon osd down out interval    = 600
+    mon osd report timeout       = 300
+
+    debug ms                     = 20
+    debug mon                    = 20
+    debug paxos                  = 20
+    debug auth                   = 20
+    mon allow pool delete      = true  ; without this, you cannot delete pool
+
+[mon.a]
+    host                         = node10
+    mon addr                     = 172.21.0.10:6789
+[mon.b]
+    host                         = node11
+    mon addr                     = 172.21.0.11:6789
+[mon.c]
+    host                         = node12
+    mon addr                     = 172.21.0.12:6789
+
+[mgr]
+    mgr data                     = /var/lib/ceph/mgr/$cluster-$id
+
+[osd]
+    osd data                     = /var/lib/ceph/osd/$cluster-$id
+    osd recovery max active      = 3
+    osd max backfills            = 5
+    osd max scrubs               = 2
+
+    osd op threads               = 4
+
+    debug ms                     = 100
+    debug osd                    = 100

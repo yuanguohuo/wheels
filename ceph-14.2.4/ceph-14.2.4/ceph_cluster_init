@@ -1,0 +1,161 @@
+#!/bin/bash
+
+source /usr/bin/ceph_common
+
+if [ -z "$MON_INIT_MEM_IDS" ] ; then
+    echo "ERROR: MON_INIT_MEM_IDS must be specified"
+    exit 1
+fi
+
+if [ -z "$MON_INIT_MEM_ADDRS" ] ; then
+    echo "ERROR: MON_INIT_MEM_ADDRS must be specified"
+    exit 1
+fi
+
+if [ -z "$PUBLIC_NETWORK" ] ; then
+    echo "ERROR: PUBLIC_NETWORK must be specified"
+    exit 1
+fi
+
+if [ -z "$CLUSTER_NETWORK" ] ; then
+    CLUSTER_NETWORK=$PUBLIC_NETWORK
+fi
+
+function gen_conf()
+{
+    local dir=$(dirname $CCONF)
+    mkdir -p $dir || return 1
+
+    local cluster_fsid=$(uuidgen)
+
+cat > $CCONF << EOF
+[global]
+    cluster = ${CLUSTER_NAME}
+    fsid    = ${cluster_fsid}
+
+    public network  = ${PUBLIC_NETWORK}
+    cluster network = ${CLUSTER_NETWORK}
+
+    auth cluster required = cephx
+    auth service required = cephx
+    auth client required  = cephx
+
+    osd pool default size     = 3
+    osd pool default min size = 2
+
+    osd pool default pg num     = 32
+    osd pool default pgp num    = 32
+
+    osd pool default crush rule = 0
+    osd crush chooseleaf type   = 1
+
+    admin socket                = ${DIR_VAR_RUN_CEPH}/\${cluster}-\${name}.asock
+    pid file                    = ${DIR_VAR_RUN_CEPH}/\${cluster}-\${name}.pid
+    log file                    = ${DIR_VAR_RUN_CEPH}/\${cluster}-\${name}.log
+    log to syslog               = false
+
+    max open files              = 131072
+    ms bind ipv6                = false
+
+    debug ms                     = 20
+    debug mon                    = 20
+    debug paxos                  = 20
+    debug auth                   = 20
+
+[mon]
+    mon initial members = ${MON_INIT_MEM_IDS}
+    mon host            = ${MON_INIT_MEM_ADDRS} 
+
+    mon data                     = ${DIR_VAR_LIB_CEPH}/mon/\${cluster}-\${id}
+    mon clock drift allowed      = 10
+    mon clock drift warn backoff = 30
+
+    mon osd full ratio           = .95
+    mon osd nearfull ratio       = .85
+
+    mon osd down out interval    = 600
+    mon osd report timeout       = 300
+    mon allow pool delete        = true  ; without this, you cannot delete pool
+EOF
+
+    ls -l $CCONF
+
+    return 0
+}
+
+function gen_monmap()
+{
+    local dir=$(dirname $MONMAP)
+    mkdir -p $dir || return 1
+
+    local fsid=$(ceph-conf -s global --lookup "fsid" -c $CCONF)
+    local members=$(ceph-conf -s mon --lookup "mon initial members"  -c $CCONF)
+    local hosts=$(ceph-conf -s mon --lookup "mon host"  -c $CCONF)
+
+    IFS=',' read -a mon_ids   <<< $members
+    IFS=',' read -a mon_addrs <<< $hosts
+
+    if [ ${#mon_ids[@]} -ne ${#mon_addrs[@]} ] ; then
+        echo "ERROR: MON_INIT_MEM_IDS and MON_INIT_MEM_ADDRS not match"
+        return 1
+    fi
+
+    local monitor_list=""
+    local i=0
+    while [ $i -lt ${#mon_ids[@]} ] ; do
+        monitor_list="$monitor_list --add ${mon_ids[i]} ${mon_addrs[i]}"
+        i=`expr $i + 1`
+    done
+
+    monmaptool --create $monitor_list --fsid $fsid $MONMAP || return 1
+
+    ls -l $MONMAP
+    monmaptool --print $MONMAP 
+
+    return 0
+}
+
+function gen_keyrings()
+{
+    for kr in $CLUSTER_KEYRING $ADMIN_KEYRING $OSD_BOOTSTRAP_KEYRING $MDS_BOOTSTRAP_KEYRING $RGW_BOOTSTRAP_KEYRING $RBD_MIRROR_BOOTSTRAP_KEYRING ; do
+        local dir=$(dirname $kr)
+        mkdir -p $dir || return 1
+    done
+
+    ceph-authtool --create-keyring ${CLUSTER_KEYRING} --gen-key -n mon. --cap mon 'allow *'
+
+    ceph-authtool --create-keyring ${ADMIN_KEYRING} --gen-key   \
+        -n client.admin                                         \
+        --cap mon 'allow *'                                     \
+        --cap osd 'allow *'                                     \
+        --cap mds 'allow *'                                     \
+        --cap mgr 'allow *'
+
+    ceph-authtool --create-keyring ${OSD_BOOTSTRAP_KEYRING} --gen-key   \
+        -n client.bootstrap-osd                                         \
+        --cap mon 'allow profile bootstrap-osd'
+
+    ceph-authtool --create-keyring ${MDS_BOOTSTRAP_KEYRING} --gen-key   \
+        -n client.bootstrap-mds                                         \
+        --cap mon 'allow profile bootstrap-mds'
+
+    ceph-authtool --create-keyring ${RGW_BOOTSTRAP_KEYRING} --gen-key   \
+        -n client.bootstrap-rgw                                         \
+        --cap mon 'allow profile bootstrap-rgw'
+
+    ceph-authtool --create-keyring ${RBD_MIRROR_BOOTSTRAP_KEYRING} --gen-key   \
+        -n client.bootstrap-rbd                                                \
+        --cap mon 'allow profile bootstrap-rbd'
+  
+    for kr in $ADMIN_KEYRING $OSD_BOOTSTRAP_KEYRING $MDS_BOOTSTRAP_KEYRING $RGW_BOOTSTRAP_KEYRING $RBD_MIRROR_BOOTSTRAP_KEYRING ; do
+      if [ -f "$kr" ]; then
+        ceph-authtool "$CLUSTER_KEYRING" --import-keyring "$kr"
+      fi
+    done
+
+    return 0
+}
+
+gen_conf      || (echo "gen_conf failed" && exit 1)
+gen_monmap    || (echo "gen_monmap failed" && exit 1)
+gen_keyrings  || (echo "gen_keyrings failed" && exit 1)
