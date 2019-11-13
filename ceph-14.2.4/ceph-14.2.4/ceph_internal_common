@@ -18,7 +18,26 @@ MDS_BOOTSTRAP_KEYRING=${DIR_VAR_LIB_CEPH}/bootstrap-mds/${CLUSTER_NAME}.keyring
 RGW_BOOTSTRAP_KEYRING=${DIR_VAR_LIB_CEPH}/bootstrap-rgw/${CLUSTER_NAME}.keyring
 RBD_MIRROR_BOOTSTRAP_KEYRING=${DIR_VAR_LIB_CEPH}/bootstrap-rbd/${CLUSTER_NAME}.keyring
 
-function ensure_owner()
+function ensure_initialized()
+{
+    if [ ! -f $MONMAP ] ; then
+        echo "ERROR: $MONMAP not exist"
+        return 1
+    fi 
+    
+    if [ ! -f $CLUSTER_KEYRING ] ; then
+        echo "ERROR: $CLUSTER_KEYRING not exist"
+        return 1
+    fi 
+    
+    if [ ! -f $CCONF ] ; then
+        echo "ERROR: $CCONF not exist"
+        return 1
+    fi 
+    return 0
+}
+
+function ensure_ownership()
 {
     chown -R ceph:ceph $DIR_ETC_CEPH     || return 1
     chown -R ceph:ceph $DIR_VAR_LIB_CEPH || return 1

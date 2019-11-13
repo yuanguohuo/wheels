@@ -1,14 +1,15 @@
 #!/bin/bash
 
-source /usr/bin/ceph_common
+source /usr/bin/ceph_internal_common
+source /usr/bin/ceph_internal_common_mon
 
-if [ -z "$MON_INIT_MEM_IDS" ] ; then
-    echo "ERROR: MON_INIT_MEM_IDS must be specified"
+if [ -z "$MON_INIT_MEM_ID" ] ; then
+    echo "ERROR: MON_INIT_MEM_ID must be specified"
     exit 1
 fi
 
-if [ -z "$MON_INIT_MEM_ADDRS" ] ; then
-    echo "ERROR: MON_INIT_MEM_ADDRS must be specified"
+if [ -z "$MON_INIT_MEM_ADDR" ] ; then
+    echo "ERROR: MON_INIT_MEM_ADDR must be specified"
     exit 1
 fi
 
@@ -57,14 +58,14 @@ cat > $CCONF << EOF
     max open files              = 131072
     ms bind ipv6                = false
 
-    debug ms                     = 20
-    debug mon                    = 20
-    debug paxos                  = 20
-    debug auth                   = 20
+    ;debug ms                     = 20
+    ;debug mon                    = 20
+    ;debug paxos                  = 20
+    ;debug auth                   = 20
 
 [mon]
-    mon initial members = ${MON_INIT_MEM_IDS}
-    mon host            = ${MON_INIT_MEM_ADDRS} 
+    mon initial members = ${MON_INIT_MEM_ID}
+    mon host            = ${MON_INIT_MEM_ADDR} 
 
     mon data                     = ${DIR_VAR_LIB_CEPH}/mon/\${cluster}-\${id}
     mon clock drift allowed      = 10
@@ -76,6 +77,10 @@ cat > $CCONF << EOF
     mon osd down out interval    = 600
     mon osd report timeout       = 300
     mon allow pool delete        = true  ; without this, you cannot delete pool
+
+[mon.${MON_INIT_MEM_ID}]
+    host                         = mon-${MON_INIT_MEM_ID}
+    mon addr                     = ${MON_INIT_MEM_ADDR}
 EOF
 
     ls -l $CCONF
@@ -89,25 +94,7 @@ function gen_monmap()
     mkdir -p $dir || return 1
 
     local fsid=$(ceph-conf -s global --lookup "fsid" -c $CCONF)
-    local members=$(ceph-conf -s mon --lookup "mon initial members"  -c $CCONF)
-    local hosts=$(ceph-conf -s mon --lookup "mon host"  -c $CCONF)
-
-    IFS=',' read -a mon_ids   <<< $members
-    IFS=',' read -a mon_addrs <<< $hosts
-
-    if [ ${#mon_ids[@]} -ne ${#mon_addrs[@]} ] ; then
-        echo "ERROR: MON_INIT_MEM_IDS and MON_INIT_MEM_ADDRS not match"
-        return 1
-    fi
-
-    local monitor_list=""
-    local i=0
-    while [ $i -lt ${#mon_ids[@]} ] ; do
-        monitor_list="$monitor_list --add ${mon_ids[i]} ${mon_addrs[i]}"
-        i=`expr $i + 1`
-    done
-
-    monmaptool --create $monitor_list --fsid $fsid $MONMAP || return 1
+    monmaptool --create --add ${MON_INIT_MEM_ID} ${MON_INIT_MEM_ADDR} --fsid $fsid $MONMAP || return 1
 
     ls -l $MONMAP
     monmaptool --print $MONMAP 
@@ -156,6 +143,36 @@ function gen_keyrings()
     return 0
 }
 
-gen_conf      || (echo "gen_conf failed" && exit 1)
-gen_monmap    || (echo "gen_monmap failed" && exit 1)
-gen_keyrings  || (echo "gen_keyrings failed" && exit 1)
+function initialize()
+{
+    gen_conf
+    if [ $? -ne 0 ] ; then
+        echo "gen_conf failed"
+        return 1
+    fi
+    gen_monmap
+    if [ $? -ne 0 ] ; then
+        echo "gen_monmap failed"
+        return 1
+    fi
+    gen_keyrings
+    if [ $? -ne 0 ] ; then
+        echo "gen_keyrings failed"
+        return 1
+    fi
+    return 0
+}
+
+initialize
+if [ $? -ne 0 ] ; then
+    echo "initialize failed"
+    exit 1
+fi
+
+start_mon $MON_INIT_MEM_ID
+if [ $? -ne 0 ] ; then
+    echo "start init mon failed"
+    exit 1
+fi
+
+exit 0

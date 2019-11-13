@@ -1,0 +1,60 @@
+#!/bin/bash
+
+source /usr/bin/ceph_internal_common
+
+function start_mon()
+{
+    local mon_id=$1
+    if [ -z "$mon_id" ] ; then
+        echo "ERROR: start_mon failed. mon_id not specified"
+        return 1
+    fi
+
+    ensure_initialized
+    if [ $? -ne 0 ] ; then
+        echo "ERROR: start_mon failed. ensure_initialized failed"
+        return 1
+    fi
+
+    #crate mon data dir
+    local mon_data_dir=$(ceph-conf --name mon.${mon_id} -c $CCONF 'mon data')
+    [ -z "$mon_data_dir" ] && mon_data_dir=${DIR_VAR_LIB_CEPH}/mon/${CLUSTER_NAME}-${MON_ID}
+    mkdir -p $mon_data_dir || return 1
+
+    ensure_ownership
+    if [ $? -ne 0 ] ; then
+        echo "ERROR: start_mon failed. ensure_ownership failed"
+        return 1
+    fi
+
+    #init mon filesystem
+    # if --mon-data not specified, ceph-mon will find out the $CCONF based on $CLUSTER_NAME, 
+    # parse it and get $mon_data_dir, and init mon filesystem in dir $mon_data_dir; here we
+    # specifiy it explicitly.
+    /usr/bin/ceph-mon                \
+        --setuser ceph               \
+        --setgroup ceph              \
+        --cluster "${CLUSTER_NAME}"  \
+        --mkfs                       \
+        -i "${mon_id}"               \
+        --inject-monmap "$MONMAP"    \
+        --keyring "$CLUSTER_KEYRING" \
+        --mon-data "$mon_data_dir"
+
+    if [ $? -ne 0 ] ; then
+        echo "ERROR: start_mon failed. ceph-mon mkfs failed"
+        return 1
+    fi
+
+    #rm the monmap
+    #rm -f $MONMAP
+
+    /usr/bin/ceph-mon -f --cluster ${CLUSTER_NAME} --id ${mon_id} --setuser ceph --setgroup ceph
+
+    if [ $? -ne 0 ] ; then
+        echo "ERROR: start_mon failed. ceph-mon start failed"
+        return 1
+    fi
+
+    return 0
+}
