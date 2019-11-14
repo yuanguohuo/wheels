@@ -31,14 +31,14 @@ function start_mon()
     # if --mon-data not specified, ceph-mon will find out the $CCONF based on $CLUSTER_NAME, 
     # parse it and get $mon_data_dir, and init mon filesystem in dir $mon_data_dir; here we
     # specifiy it explicitly.
-    /usr/bin/ceph-mon                \
-        --setuser ceph               \
-        --setgroup ceph              \
-        --cluster "${CLUSTER_NAME}"  \
-        --mkfs                       \
-        -i "${mon_id}"               \
+    /usr/bin/ceph-mon                     \
+        --setuser ceph                    \
+        --setgroup ceph                   \
+        --cluster "${CLUSTER_NAME}"       \
+        --mkfs                            \
+        -i "${mon_id}"                    \
         --inject-monmap "$INIT_MONMAP"    \
-        --keyring "$CLUSTER_KEYRING" \
+        --keyring "$CLUSTER_KEYRING"      \
         --mon-data "$mon_data_dir"
 
     if [ $? -ne 0 ] ; then
@@ -46,7 +46,12 @@ function start_mon()
         return 1
     fi
 
-    /usr/bin/ceph-mon -f --cluster ${CLUSTER_NAME} --id ${mon_id} --setuser ceph --setgroup ceph
+    #start monitor
+    /usr/bin/ceph-mon -f          \
+        --setuser ceph            \
+        --setgroup ceph           \
+        --cluster ${CLUSTER_NAME} \
+        --id ${mon_id}
 
     if [ $? -ne 0 ] ; then
         echo "ERROR: start_mon failed. ceph-mon start failed"

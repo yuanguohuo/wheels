@@ -1,0 +1,61 @@
+#!/bin/bash
+
+source /usr/bin/ceph_internal_common
+
+if [ -z "MGR_ID" ] ; then
+    echo "ERROR: MGR_ID must be specified"
+    exit 1
+fi
+
+function start_mgr()
+{
+    local mgr_id=$1
+    if [ -z "$mgr_id" ] ; then
+        echo "ERROR: start_mgr failed. mgr_id not specified"
+        return 1
+    fi
+
+    ensure_initialized
+    if [ $? -ne 0 ] ; then
+        echo "ERROR: start_mgr failed. ensure_initialized failed"
+        return 1
+    fi
+
+    #crate mgr data dir
+    local mgr_data_dir=$(ceph-conf --name mgr.${mgr_id} -c $CCONF 'mgr data')
+    [ -z "$mgr_data_dir" ] && mgr_data_dir=${DIR_VAR_LIB_CEPH}/mgr/${CLUSTER_NAME}-${mgr_id}
+    mkdir -p $mgr_data_dir || return 1
+
+    ensure_ownership
+    if [ $? -ne 0 ] ; then
+        echo "ERROR: start_mgr failed. ensure_ownership failed"
+        return 1
+    fi
+
+    #init mgr filesystem
+    local MGR_KEYRING=$mgr_data_dir/keyring
+    /usr/bin/ceph                     \
+        --setuser ceph                \
+        --setgroup ceph               \
+        --cluster ${CLUSTER_NAME}     \
+        auth get-or-create mgr.${mgr_id} mon 'allow profile mgr' osd 'allow *' mds 'allow *' -o ${MGR_KEYRING}
+
+    #start mgr
+    /usr/bin/ceph-mgr -f          \
+        --setuser ceph            \
+        --setgroup ceph           \
+        --cluster ${CLUSTER_NAME} \
+        -i ${mgr_id}
+
+    if [ $? -ne 0 ] ; then
+        echo "ERROR: start_mgr failed. ceph-mgr start failed"
+        return 1
+    fi
+
+    return 0
+}
+
+start_mgr $MGR_ID
+if [ $? -ne 0 ] ; then
+    echo "ERROR: start_mgr failed"
+fi

@@ -5,4 +5,5 @@ ceph_internal_common     \
 ceph_internal_common_mon \
 ceph_cluster_create      \
 ceph_add_mon             \
+ceph_add_mgr             \
 /usr/bin/

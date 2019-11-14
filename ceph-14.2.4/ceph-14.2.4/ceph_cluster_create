@@ -22,6 +22,14 @@ if [ -z "$CLUSTER_NETWORK" ] ; then
     CLUSTER_NETWORK=$PUBLIC_NETWORK
 fi
 
+#to enable msg2, not work!
+
+#ip=$(echo ${MON_INIT_MEM_ADDR} | cut -d ':' -f 1)
+#port=$(echo ${MON_INIT_MEM_ADDR} | cut -d ':' -f 2)
+#v1=$ip:$port
+#v2=$ip:3300
+#addr="v2:$v2,v1:$v1"
+
 function gen_conf()
 {
     local dir=$(dirname $CCONF)
@@ -65,7 +73,7 @@ cat > $CCONF << EOF
 
 [mon]
     mon initial members = ${MON_INIT_MEM_ID}
-    mon host            = ${MON_INIT_MEM_ADDR} 
+    mon host            = ${MON_INIT_MEM_ADDR}
 
     mon data                     = ${DIR_VAR_LIB_CEPH}/mon/\${cluster}-\${id}
     mon clock drift allowed      = 10
