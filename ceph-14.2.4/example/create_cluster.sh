@@ -10,8 +10,10 @@ docker container run                                    \
     -t                                                  \
     --privileged=true                                   \
     --network=ceph-public                               \
+    --name=mon.a                                        \
     --ip=172.20.0.10                                    \
     -v $(pwd)/var/lib/ceph:/var/lib/ceph                \
+    -v $(pwd)/var/run/ceph:/var/run/ceph                \
     -v $(pwd)/etc/ceph:/etc/ceph                        \
     -e CLUSTER_NAME=clusterfoo                          \
     -e MON_INIT_MEM_ID=a                                \
