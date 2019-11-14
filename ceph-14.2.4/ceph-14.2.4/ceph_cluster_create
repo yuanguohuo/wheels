@@ -88,16 +88,16 @@ EOF
     return 0
 }
 
-function gen_monmap()
+function gen_init_monmap()
 {
-    local dir=$(dirname $MONMAP)
+    local dir=$(dirname $INIT_MONMAP)
     mkdir -p $dir || return 1
 
     local fsid=$(ceph-conf -s global --lookup "fsid" -c $CCONF)
-    monmaptool --create --add ${MON_INIT_MEM_ID} ${MON_INIT_MEM_ADDR} --fsid $fsid $MONMAP || return 1
+    monmaptool --create --add ${MON_INIT_MEM_ID} ${MON_INIT_MEM_ADDR} --fsid $fsid $INIT_MONMAP || return 1
 
-    ls -l $MONMAP
-    monmaptool --print $MONMAP 
+    ls -l $INIT_MONMAP
+    monmaptool --print $INIT_MONMAP 
 
     return 0
 }
@@ -150,9 +150,9 @@ function initialize()
         echo "gen_conf failed"
         return 1
     fi
-    gen_monmap
+    gen_init_monmap
     if [ $? -ne 0 ] ; then
-        echo "gen_monmap failed"
+        echo "gen_init_monmap failed"
         return 1
     fi
     gen_keyrings

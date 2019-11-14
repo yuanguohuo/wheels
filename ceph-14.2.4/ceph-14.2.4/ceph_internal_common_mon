@@ -37,7 +37,7 @@ function start_mon()
         --cluster "${CLUSTER_NAME}"  \
         --mkfs                       \
         -i "${mon_id}"               \
-        --inject-monmap "$MONMAP"    \
+        --inject-monmap "$INIT_MONMAP"    \
         --keyring "$CLUSTER_KEYRING" \
         --mon-data "$mon_data_dir"
 
@@ -45,9 +45,6 @@ function start_mon()
         echo "ERROR: start_mon failed. ceph-mon mkfs failed"
         return 1
     fi
-
-    #rm the monmap
-    #rm -f $MONMAP
 
     /usr/bin/ceph-mon -f --cluster ${CLUSTER_NAME} --id ${mon_id} --setuser ceph --setgroup ceph
 

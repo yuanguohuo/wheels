@@ -10,7 +10,7 @@ DIR_VAR_LIB_CEPH=/var/lib/ceph
 DIR_VAR_RUN_CEPH=/var/run/ceph
 
 CCONF=${DIR_ETC_CEPH}/${CLUSTER_NAME}.conf
-MONMAP=${DIR_ETC_CEPH}/monmap
+INIT_MONMAP=${DIR_ETC_CEPH}/monmap
 CLUSTER_KEYRING=${DIR_ETC_CEPH}/${CLUSTER_NAME}.keyring
 ADMIN_KEYRING=${DIR_ETC_CEPH}/${CLUSTER_NAME}.client.admin.keyring
 OSD_BOOTSTRAP_KEYRING=${DIR_VAR_LIB_CEPH}/bootstrap-osd/${CLUSTER_NAME}.keyring
@@ -20,8 +20,8 @@ RBD_MIRROR_BOOTSTRAP_KEYRING=${DIR_VAR_LIB_CEPH}/bootstrap-rbd/${CLUSTER_NAME}.k
 
 function ensure_initialized()
 {
-    if [ ! -f $MONMAP ] ; then
-        echo "ERROR: $MONMAP not exist"
+    if [ ! -f $INIT_MONMAP ] ; then
+        echo "ERROR: $INIT_MONMAP not exist"
         return 1
     fi 
     
